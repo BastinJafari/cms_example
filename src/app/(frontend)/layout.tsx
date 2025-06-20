@@ -17,7 +17,15 @@ import './globals.css'
 import { getServerSideURL } from '@/utilities/getURL'
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { isEnabled } = await draftMode()
+  let isEnabled = false
+  
+  try {
+    const draft = await draftMode()
+    isEnabled = draft.isEnabled
+  } catch (error) {
+    // draftMode() called outside request scope (during static generation)
+    isEnabled = false
+  }
 
   return (
     <html className={cn(GeistSans.variable, GeistMono.variable)} lang="en" suppressHydrationWarning>

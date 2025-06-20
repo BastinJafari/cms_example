@@ -42,10 +42,19 @@ type Args = {
 }
 
 export default async function Post({ params: paramsPromise }: Args) {
-  const { isEnabled: draft } = await draftMode()
+  let draft = false
+  
+  try {
+    const draftModeResult = await draftMode()
+    draft = draftModeResult.isEnabled
+  } catch (error) {
+    // draftMode() called outside request scope (during static generation)
+    draft = false
+  }
+
   const { slug = '' } = await paramsPromise
   const url = '/posts/' + slug
-  const post = await queryPostBySlug({ slug })
+  const post = await queryPostBySlug({ slug, draft })
 
   if (!post) return <PayloadRedirects url={url} />
 
@@ -77,14 +86,12 @@ export default async function Post({ params: paramsPromise }: Args) {
 
 export async function generateMetadata({ params: paramsPromise }: Args): Promise<Metadata> {
   const { slug = '' } = await paramsPromise
-  const post = await queryPostBySlug({ slug })
+  const post = await queryPostBySlug({ slug, draft: false })
 
   return generateMeta({ doc: post })
 }
 
-const queryPostBySlug = cache(async ({ slug }: { slug: string }) => {
-  const { isEnabled: draft } = await draftMode()
-
+const queryPostBySlug = cache(async ({ slug, draft }: { slug: string; draft: boolean }) => {
   const payload = await getPayload({ config: configPromise })
 
   const result = await payload.find({

@@ -44,7 +44,16 @@ type Args = {
 }
 
 export default async function Page({ params: paramsPromise }: Args) {
-  const { isEnabled: draft } = await draftMode()
+  let draft = false
+  
+  try {
+    const draftModeResult = await draftMode()
+    draft = draftModeResult.isEnabled
+  } catch (error) {
+    // draftMode() called outside request scope (during static generation)
+    draft = false
+  }
+
   const { slug = 'home' } = await paramsPromise
   const url = '/' + slug
 
@@ -52,6 +61,7 @@ export default async function Page({ params: paramsPromise }: Args) {
 
   page = await queryPageBySlug({
     slug,
+    draft,
   })
 
   // Remove this code once your website is seeded
@@ -83,14 +93,13 @@ export async function generateMetadata({ params: paramsPromise }: Args): Promise
   const { slug = 'home' } = await paramsPromise
   const page = await queryPageBySlug({
     slug,
+    draft: false,
   })
 
   return generateMeta({ doc: page })
 }
 
-const queryPageBySlug = cache(async ({ slug }: { slug: string }) => {
-  const { isEnabled: draft } = await draftMode()
-
+const queryPageBySlug = cache(async ({ slug, draft }: { slug: string; draft: boolean }) => {
   const payload = await getPayload({ config: configPromise })
 
   const result = await payload.find({
